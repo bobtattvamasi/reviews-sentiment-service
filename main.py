@@ -1,15 +1,24 @@
-from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel
+# main.py
+
+from fastapi import FastAPI, Query
+from fastapi.responses import ORJSONResponse
+from pydantic import BaseModel, Field
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
-app = FastAPI(title="Reviews Sentiment Service")
+app = FastAPI(title="Reviews Sentiment Service",
+    default_response_class=ORJSONResponse
+)
 
 DB_PATH = "reviews.db"
 
 class ReviewCreate(BaseModel):
-    text: str
+    text: str = Field(
+        ...,
+        min_length=1,
+        description="Текст отзыва, не может быть пустым"
+    )
 
 class Review(ReviewCreate):
     id: int
@@ -51,7 +60,7 @@ def on_startup():
 @app.post("/reviews", response_model=Review, status_code=201)
 def create_review(payload: ReviewCreate):
     sentiment = get_sentiment(payload.text)
-    created_at = datetime.now().isoformat()
+    created_at = datetime.now(timezone.utc).isoformat()
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
